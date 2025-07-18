@@ -20,7 +20,7 @@ chronologyRouter.get("/chronology", async (req, res) => {
 
 chronologyRouter.post(
   "/chronology-add",
-  authenticateToken,
+  // authenticateToken,
   async (req, res) => {
     const { title, date, docs } = req.body;
     try {
@@ -50,10 +50,12 @@ chronologyRouter.post(
 
 chronologyRouter.post(
   "/chronology-update/:id",
-  authenticateToken,
+  // authenticateToken,
   async (req, res) => {
     const id = req.params.id;
     try {
+      console.log(id);
+      console.log(req.body);
       if (!req.body) return res.send(errorRes(401, "Body Required"));
 
       const oldChrono = await chronoModel.findById(id);
@@ -79,7 +81,7 @@ chronologyRouter.post(
 
 chronologyRouter.delete(
   "/chronology-delete/:id",
-  authenticateToken,
+  // authenticateToken,
   async (req, res) => {
     const id = req.params.id;
     try {
