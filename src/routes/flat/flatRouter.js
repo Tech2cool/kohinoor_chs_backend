@@ -10,6 +10,7 @@ import axios from "axios";
 import {
   comparePassword,
   createJwtToken,
+  encryptPassword,
   generateOTP,
 } from "../../utils/helper.js";
 import { authenticateToken } from "../../middleware/auth.middleware.js";
@@ -52,7 +53,7 @@ flatRouter.post("/flat-add", authenticateToken, async (req, res) => {
     if (oldFlat) return res.send(errorRes(401, "Member Already Exist"));
 
     var id =
-      `vasundhara-${society}-${buildingNo}-${floor}-${flatNo}`.toLowerCase();
+      `kohinoor-${buildingNo}-${floor}-${flatNo}`.toLowerCase();
 
     const newFlat = await flatModel.create({
       ...req.body,
@@ -102,12 +103,11 @@ flatRouter.post("/flat-update/:id", authenticateToken, async (req, res) => {
 flatRouter.post("/flat-updates", async (req, res) => {
   const results = [];
   const dataTuPush = [];
-  const csvFilePath = path.join(__dirname, "vasundhara_flat_list.csv");
+  const csvFilePath = path.join(__dirname, "kohinoor_flat_list.csv");
 
   if (!fs.existsSync(csvFilePath)) {
     return res.status(400).send("CSV file not found");
   }
-  let i = 0;
 
   fs.createReadStream(csvFilePath)
     .pipe(csv())
@@ -116,45 +116,55 @@ flatRouter.post("/flat-updates", async (req, res) => {
     })
     .on("end", async () => {
       for (const row of results) {
-        const {
-          Name: name,
-          building,
-          floor,
-          "flat no": flat,
-          "Contact No.": phoneNumber,
-          unitNo,
-        } = row;
+        const name = row?.name?.trim();
+        const floor = parseInt(row?.floor || "0");
+        const phoneNumberRaw = row?.phoneNumber || "";
+        const unitNoRaw = row?.unitNo?.trim();
+        const email= row?.email?.trim();
 
-        const buildingNo = building
-          ?.toLowerCase()
-          ?.replace("c", "")
-          ?.replace(":", "");
-        const society = "C";
-        const newPhone = phoneNumber?.split(",")[0];
+        if (!unitNoRaw || !unitNoRaw.includes("-") || !unitNoRaw.includes("/")) {
+          console.warn("Skipping invalid unitNo:", unitNoRaw);
+          continue;
+        }
 
-        var id =
-          `vasundhara-${society}-${buildingNo}-${floor}-${flat}`.toLowerCase();
+        const [societyPart, rest] = unitNoRaw.split("-");
+        const [buildingPart, flatPart] = rest.split("/");
+
+        const society = societyPart?.trim() || "B";
+        const buildingNo = parseInt(buildingPart?.trim() || "0");
+        const flatNo = parseInt(flatPart?.trim() || "0");
+        const newPhone = phoneNumberRaw.split(",")[0].trim();
+
+        const id = `kohinoor-${society}-${buildingNo}-${floor}-${flatNo}`.toLowerCase();
+
+        const password = await encryptPassword(newPhone); // 👈 Encrypt phone number as password
 
         dataTuPush.push({
           _id: id,
-          name: name?.trim(),
+          name,
+          email,
           society,
-          // building,
-          buildingNo: parseInt(buildingNo),
-          floor: parseInt(floor),
-          flatNo: parseInt(flat),
+          buildingNo,
+          floor,
+          flatNo,
           phoneNumber: newPhone ? parseInt(newPhone) : 0,
-          unitNo,
+          unitNo: unitNoRaw,
+          password, 
         });
       }
+
+      // console.log(dataTuPush);
+
       // await flatModel.insertMany(dataTuPush);
-      // Send the results only after processing is done
       return res.send(dataTuPush);
     })
     .on("error", (err) => {
       return res.status(500).send({ error: err.message });
     });
 });
+
+
+
 flatRouter.post("/flat-otp-generate", async (req, res, next) => {
   const { name, email, society, phoneNumber, docId, flatNo } = req.body;
   try {

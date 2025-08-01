@@ -17,7 +17,7 @@ export const flatSchema = new mongoose.Schema({
   phoneNumber: { type: Number, required: true },
   countryCode: { type: String, default: "+91" },
   society: { type: String, default: "" },
-  societyName: { type: String, default: "" },
+  societyName: { type: String, default: null },
   refreshToken: { type: String, default: null },
   password: { type: String, default: null },
   role: {
